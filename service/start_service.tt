@@ -1,0 +1,70 @@
+#!/bin/sh
+export KB_TOP=[% kb_top %]
+export KB_RUNTIME=[% kb_runtime %]
+export PATH=$KB_TOP/bin:$KB_RUNTIME/bin:$KB_TOP/services/[% kb_service_name %]/bin:$KB_TOP/services/cdmi_api/bin:$PATH
+export PERL5LIB=$KB_TOP/lib
+export KB_SERVICE_NAME="[% kb_service_name %]"
+export KB_SERVICE_DIR="$KB_TOP/services/[% kb_service_name %]"
+export KB_DEPLOYMENT_CONFIG="$KB_TOP/deployment.cfg"
+#
+# For phispy
+export R_LIBS="$KB_TOP/lib"
+
+if [ -f $KB_SERVICE_DIR/setenv.sh ] ; then
+  . $KB_SERVICE_DIR/setenv.sh
+fi
+
+[% IF kb_tempdir -%]
+export TMPDIR=[% kb_tempdir %]
+export TEMPDIR=[% kb_tempdir %]
+[% END %]
+pid_file=$KB_SERVICE_DIR/service.pid
+
+export SOLR_JAVA_HOME="/disks/patric-common/runtime/java"
+#NEWRELIC="-a -javaagent:/home/solr/solr5/newrelic/newrelic.jar"
+ulimit -v unlimited
+ulimit -n 10000
+
+export PATH=$KB_RUNTIME/p3_solr/solr/bin:$PATH
+
+export SOLR_INCLUDE=$KB_SERVICE_DIR/solr.include.sh
+
+log_dir=$KB_SERVICE_DIR/logs
+mkdir -p $log_dir
+
+#
+# Tuning parameters here are copied from the stock solr.in.sh from runtime/p3_solr/solr/bin/
+#
+cat > $SOLR_INCLUDE <<EOF
+SOLR_JAVA_MEM="-Xms[% kb_solr_stack_memory %] -Xmx[% kb_solr_heap_memory %]"
+SOLR_LOGS_DIR=$log_dir
+
+GC_LOG_OPTS="-verbose:gc -XX:+PrintHeapAtGC -XX:+PrintGCDetails \
+-XX:+PrintGCDateStamps -XX:+PrintGCTimeStamps -XX:+PrintTenuringDistribution -XX:+PrintGCApplicationStoppedTime"
+
+# These GC settings have shown to work well for a number of common Solr workloads
+GC_TUNE="-XX:NewRatio=3 \
+-XX:SurvivorRatio=4 \
+-XX:TargetSurvivorRatio=90 \
+-XX:MaxTenuringThreshold=8 \
+-XX:+UseConcMarkSweepGC \
+-XX:+UseParNewGC \
+-XX:ConcGCThreads=4 -XX:ParallelGCThreads=4 \
+-XX:+CMSScavengeBeforeRemark \
+-XX:PretenureSizeThreshold=64m \
+-XX:+UseCMSInitiatingOccupancyOnly \
+-XX:CMSInitiatingOccupancyFraction=50 \
+-XX:CMSMaxAbortablePrecleanTime=6000 \
+-XX:+CMSParallelRemarkEnabled \
+-XX:+ParallelRefProcEnabled"
+
+ENABLE_REMOTE_JMX_OPTS="false"
+SOLR_OPTS="$SOLR_OPTS -Xss256k"
+SOLR_PID_DIR=$log_dir
+SOLR_PORT=[% kb_service_port %]
+
+EOF
+
+solr_home=[% kb_solr_home %]
+
+solr restart -s $solr_home -Dlucene.version=[% kb_solr_lucene_version %] $NEWRELIC
