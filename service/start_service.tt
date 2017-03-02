@@ -56,7 +56,8 @@ GC_TUNE="-XX:NewRatio=3 \
 -XX:CMSInitiatingOccupancyFraction=50 \
 -XX:CMSMaxAbortablePrecleanTime=6000 \
 -XX:+CMSParallelRemarkEnabled \
--XX:+ParallelRefProcEnabled"
+-XX:+ParallelRefProcEnabled \
+-XX:+UseRTMLocking"
 
 ENABLE_REMOTE_JMX_OPTS="false"
 SOLR_OPTS="$SOLR_OPTS -Xss256k"
